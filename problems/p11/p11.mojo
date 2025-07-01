@@ -24,9 +24,27 @@ fn conv_1d_simple[
     a: LayoutTensor[mut=False, dtype, in_layout],
     b: LayoutTensor[mut=False, dtype, conv_layout],
 ):
-    global_i = block_dim.x * block_idx.x + thread_idx.x
-    local_i = thread_idx.x
-    # FILL ME IN (roughly 14 lines)
+    glb_i = block_dim.x * block_idx.x + thread_idx.x
+    lcl_i = thread_idx.x
+
+
+    shared_a = tb[dtype]().row_major[TPB]().shared().alloc()
+    shared_kernel = tb[dtype]().row_major[TPB]().shared().alloc()
+
+    
+    if glb_i < SIZE:
+        shared_a[lcl_i] = a[glb_i]
+    if glb_i < CONV:
+        shared_kernel[lcl_i] = b[glb_i]
+
+
+    barrier()
+
+    if glb_i < SIZE:
+        output[glb_i] = 0
+        for c_idx in range(CONV):
+            if glb_i + c_idx < SIZE:
+                output[glb_i] += shared_a[glb_i + c_idx] * shared_kernel[c_idx]
 
 
 # ANCHOR_END: conv_1d_simple
@@ -66,7 +84,6 @@ def main():
         with a.map_to_host() as a_host:
             for i in range(size):
                 a_host[i] = i
-
         with b.map_to_host() as b_host:
             for i in range(conv):
                 b_host[i] = i
