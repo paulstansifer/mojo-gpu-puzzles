@@ -88,6 +88,9 @@ def main():
             for i in range(conv):
                 b_host[i] = i
 
+        if len(argv()) != 2:
+            raise Error("Expected one command-line argument: '--simple' or '--block-boundary'")
+
         if argv()[1] == "--simple":
             var out_tensor = LayoutTensor[mut=False, dtype, out_layout](
                 out.unsafe_ptr()
